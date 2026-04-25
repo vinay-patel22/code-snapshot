@@ -1,0 +1,27 @@
+# Robots.txt for Code Snapshot
+# Allow all search engines to index the site
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /.git/
+Disallow: /node_modules/
+
+# Specific rules for major search engines
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://code-snapshot.dev/sitemap.xml
+
+# Comment: Last updated
+# Updated: 2026-04-25

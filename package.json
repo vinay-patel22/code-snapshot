@@ -1,0 +1,48 @@
+{
+    "name": "code-snapshot",
+    "version": "1.0.0",
+    "description": "Export your entire codebase instantly with 100% privacy. Zero uploads, all processing is local.",
+    "keywords": [
+        "code-export",
+        "codebase-snapshot",
+        "source-code",
+        "privacy-first",
+        "local-processing",
+        "code-backup",
+        "developer-tool"
+    ],
+    "author": {
+        "name": "Vinay Patel",
+        "url": "https://code-snapshot.dev"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/vinay-patel22/code-snapshot"
+    },
+    "homepage": "https://code-snapshot.dev",
+    "bugs": {
+        "url": "https://github.com/vinay-patel22/code-snapshot/issues"
+    },
+    "type": "module",
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "scripts": {
+        "dev": "npx http-server -p 3000 -c-1",
+        "build": "echo 'Static site - no build required'",
+        "serve": "npx http-server -p 8080 -g",
+        "test": "echo 'No tests configured'",
+        "lint": "echo 'No linter configured'"
+    },
+    "devDependencies": {
+        "http-server": "^14.1.1"
+    },
+    "browserslist": [
+        "> 0.5%",
+        "last 2 versions",
+        "Firefox ESR",
+        "not dead",
+        "not IE 11"
+    ]
+}

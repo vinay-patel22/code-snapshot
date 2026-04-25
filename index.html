@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Code Snapshot - Export your entire codebase instantly with 100% privacy. No uploads, all processing is local. Perfect for code reviews, backups, and AI integration."
+    />
+    <meta
+      name="keywords"
+      content="code export, codebase snapshot, code backup, source code export, privacy-first, local processing"
+    />
+    <meta name="author" content="Code Snapshot" />
+    <meta
+      name="robots"
+      content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+    />
+    <meta name="theme-color" content="#ffffff" />
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="Code Snapshot • Export Your Codebase Instantly"
+    />
+    <meta
+      property="og:description"
+      content="Export your entire codebase with zero uploads. 100% local processing. Perfect for code reviews, backups, and AI integration."
+    />
+    <meta property="og:url" content="https://code-snapshot.dev" />
+    <meta
+      property="og:image"
+      content="https://code-snapshot.dev/og-image.png"
+    />
+    <meta property="og:site_name" content="Code Snapshot" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Code Snapshot • Export Your Codebase" />
+    <meta
+      name="twitter:description"
+      content="Export your entire codebase with zero uploads. 100% local processing."
+    />
+    <meta
+      name="twitter:image"
+      content="https://code-snapshot.dev/og-image.png"
+    />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://code-snapshot.dev" />
+
+    <!-- Performance -->
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" href="css/styles.css" as="style" />
+
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>"
+    />
+    <link
+      rel="apple-touch-icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><text y='.9em' font-size='160'>⚡</text></svg>"
+    />
+
+    <title>Code Snapshot • Export Your Codebase</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Code Snapshot",
+        "description": "Export your entire codebase instantly with 100% privacy. No uploads, all processing is local.",
+        "url": "https://code-snapshot.dev",
+        "applicationCategory": "DeveloperApplication",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Organization",
+          "name": "Code Snapshot"
+        },
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript"
+      }
+    </script>
+  </head>
+
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="brand">
+          <div class="brand-icon">⚡</div>
+          <div class="brand-text">
+            <div class="brand-title">Code Snapshot</div>
+            <div class="brand-tagline">Export your codebase instantly</div>
+          </div>
+        </div>
+        <div class="header-center">
+          <div class="privacy-badge">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span>100% Local • Zero Uploads • Complete Privacy</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <input type="file" id="fileInput" class="hidden-input" multiple />
+          <button class="btn" onclick="app.selectFiles()">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+              ></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="12" y1="18" x2="12" y2="12"></line>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+            Select Files
+          </button>
+          <button class="btn btn-danger" id="clearBtn" disabled>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path
+                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+              ></path>
+            </svg>
+            Clear
+          </button>
+          <button
+            class="btn btn-primary"
+            id="downloadTxtBtn"
+            disabled
+            onclick="app.startExport('txt')"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+              ></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            Combined Code
+          </button>
+          <button
+            class="btn btn-primary"
+            id="downloadZipBtn"
+            disabled
+            onclick="app.startExport('zip')"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Export ZIP
+          </button>
+        </div>
+      </header>
+
+      <main class="main">
+        <aside class="sidebar" id="sidebar">
+          <div class="sidebar-header">
+            <div class="sidebar-title">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+                ></path>
+              </svg>
+              Explorer
+            </div>
+            <div class="sidebar-actions">
+              <button
+                class="btn-icon"
+                id="collapseAllBtn"
+                title="Collapse All"
+                onclick="app.collapseAll()"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="4 14 10 14 10 20"></polyline>
+                  <polyline points="20 10 14 10 14 4"></polyline>
+                  <line x1="14" y1="10" x2="21" y2="3"></line>
+                  <line x1="3" y1="21" x2="10" y2="14"></line>
+                </svg>
+              </button>
+              <button
+                class="btn-icon"
+                id="expandAllBtn"
+                title="Expand All"
+                onclick="app.expandAll()"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <polyline points="9 21 3 21 3 15"></polyline>
+                  <line x1="21" y1="3" x2="14" y2="10"></line>
+                  <line x1="3" y1="21" x2="10" y2="14"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="sidebar-stats">
+            <div class="stat-item">
+              <span class="stat-value" id="fileCount">0</span> files
+            </div>
+            <span>•</span>
+            <div class="stat-item">
+              <span class="stat-value" id="totalSize">0 B</span> total
+            </div>
+          </div>
+          <div class="tree-container" id="treeContainer">
+            <div class="empty-state">
+              <div class="empty-state-icon">📁</div>
+              <div class="empty-state-title">No files yet</div>
+              <div class="empty-state-desc">
+                Drop folders or click "Select Files"
+              </div>
+            </div>
+          </div>
+        </aside>
+        <div class="resize-handle" id="resizeHandle"></div>
+        <section class="content">
+          <div class="drop-zone" id="dropZone">
+            <div class="drop-content">
+              <div class="drop-icon">📦</div>
+              <div class="drop-title">Drag & Drop Your Code</div>
+              <div class="drop-hint">
+                <span class="highlight">Drop multiple folders</span> or
+                individual files<br />
+                Supports recursive folder import with full structure<br />
+                Auto-excludes: <code>node_modules</code>, <code>.git</code>,
+                <code>dist</code>,
+                <code>build</code>
+              </div>
+            </div>
+          </div>
+          <div class="file-list-container" id="fileListContainer">
+            <div class="file-list-header">
+              <div class="file-list-title">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                  ></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                Selected Files
+              </div>
+              <span class="file-list-count" id="fileListCount">0 items</span>
+            </div>
+            <div class="file-list" id="fileList"></div>
+          </div>
+          <div class="loading-overlay" id="loadingOverlay">
+            <div class="loader">
+              <div class="spinner"></div>
+              <div class="loader-text" id="loadingText">Processing...</div>
+              <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+              </div>
+              <button
+                class="cancel-btn"
+                id="cancelBtn"
+                onclick="app.cancelExport()"
+              >
+                ✕ Cancel Export
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+      <footer class="footer-hint">
+        <kbd>Click Select Files</kbd> to browse • <kbd>Drag folders</kbd> for
+        recursive import • <kbd>Delete</kbd>
+        to remove selected
+      </footer>
+    </div>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
