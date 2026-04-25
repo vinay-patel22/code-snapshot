@@ -13,14 +13,14 @@
     ],
     "author": {
         "name": "Vinay Patel",
-        "url": "https://code-snapshot.dev"
+        "url": "https://devcodesnap.vercel.app"
     },
     "license": "MIT",
     "repository": {
         "type": "git",
         "url": "https://github.com/vinay-patel22/code-snapshot"
     },
-    "homepage": "https://code-snapshot.dev",
+    "homepage": "https://devcodesnap.vercel.app",
     "bugs": {
         "url": "https://github.com/vinay-patel22/code-snapshot/issues"
     },

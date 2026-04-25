@@ -21,7 +21,7 @@ Allow: /
 Crawl-delay: 1
 
 # Sitemap location
-Sitemap: https://code-snapshot.dev/sitemap.xml
+Sitemap: https://devcodesnap.vercel.app/sitemap.xml
 
 # Comment: Last updated
 # Updated: 2026-04-25
