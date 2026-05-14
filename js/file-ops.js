@@ -1,30 +1,20 @@
 // File handling utilities
 
-export const DEFAULT_IGNORED = new Set([
-  "node_modules",
-  ".git",
-  "dist",
-  "build",
-  ".next",
-  ".nuxt",
-  "coverage",
-  ".cache",
-  ".DS_Store",
-  "vendor",
-]);
+import { DEFAULT_IGNORED, shouldIgnore } from "./ignore-rules.js";
+
+export {
+  DEFAULT_IGNORED,
+  ASSET_FILE_EXTENSIONS,
+  STYLE_FILE_EXTENSIONS,
+  SECURITY_FILE_EXTENSIONS,
+  shouldIgnore,
+} from "./ignore-rules.js";
 
 export const CONFIG = {
   MAX_FILE_SIZE: 50 * 1024 * 1024,
   CHUNK_SIZE: 10,
   MAX_TXT_EXPORT_SIZE: 200 * 1024 * 1024,
 };
-
-export function shouldIgnore(path, ignoredSet = DEFAULT_IGNORED) {
-  return path
-    .toLowerCase()
-    .split(/[\/\\]/)
-    .some((p) => ignoredSet.has(p));
-}
 
 export function normalizePath(p) {
   return (p || "").replace(/\\/g, "/");
@@ -68,7 +58,7 @@ export async function processDirectoryEntry(
   path = "",
   ignored = DEFAULT_IGNORED,
 ) {
-  if (!entry || shouldIgnore(entry.name, ignored)) return [];
+  if (!entry) return [];
 
   const currentPath = path ? `${path}/${entry.name}` : entry.name;
   if (shouldIgnore(currentPath, ignored)) return [];
