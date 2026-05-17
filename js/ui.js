@@ -13,6 +13,10 @@ export function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function escapeAttr(str) {
+  return escapeHtml(str).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 export function renderTree(files, container, onRemove) {
   if (!files.size) {
     container.innerHTML = `
@@ -46,14 +50,16 @@ export function renderTree(files, container, onRemove) {
     for (const [name, child] of node.children) {
       const hasKids = child.children.size || child.files.length;
       const isOpen = depth < 2;
+      const safeName = escapeHtml(name);
+      const safeNameAttr = escapeAttr(name);
       html += `
         <div class="tree-node">
-          <div class="tree-row folder" style="padding-left:${8 + depth * 16}px">
-            ${hasKids ? `<span class="tree-toggle ${isOpen ? "" : "collapsed"}" data-toggle>▼</span>` : '<span style="width:20px"></span>'}
+          <div class="tree-row folder" style="padding-left:${8 + depth * 16}px" role="button" tabindex="0" aria-expanded="${isOpen}" aria-label="${isOpen ? "Collapse" : "Expand"} ${safeNameAttr}" data-tree-trigger>
+            ${hasKids ? `<span class="tree-toggle ${isOpen ? "" : "collapsed"}" aria-hidden="true">▼</span>` : '<span style="width:20px"></span>'}
             <span class="tree-icon folder">📁</span>
-            <span class="tree-label" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
+            <span class="tree-label" title="${safeNameAttr}">${safeName}</span>
           </div>
-          ${hasKids ? `<div class="tree-children ${isOpen ? "" : "collapsed"}">${renderNode(child, depth + 1)}</div>` : ""}
+          ${hasKids ? `<div class="tree-children ${isOpen ? "" : "collapsed"}" ${isOpen ? "" : 'aria-hidden="true" inert'}><div class="tree-children-inner">${renderNode(child, depth + 1)}</div></div>` : ""}
         </div>
       `;
     }
@@ -65,7 +71,7 @@ export function renderTree(files, container, onRemove) {
           <div class="tree-row" style="padding-left:${8 + depth * 16 + 20}px">
             <span style="width:20px"></span>
             <span class="tree-icon file">📄</span>
-            <span class="tree-label" title="${escapeHtml(f.path)}">${escapeHtml(f.displayName)}</span>
+            <span class="tree-label" title="${escapeAttr(f.path)}">${escapeHtml(f.displayName)}</span>
             <span class="tree-meta">${formatBytes(f.size)}</span>
             <button class="tree-remove" onclick="window.app.removeFile('${safePath}')" title="Remove">×</button>
           </div>
@@ -77,17 +83,34 @@ export function renderTree(files, container, onRemove) {
 
   container.innerHTML = `<div class="tree">${renderNode(root)}</div>`;
 
-  container.querySelectorAll("[data-toggle]").forEach((btn) => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      const children = btn
-        .closest(".tree-node")
-        .querySelector(".tree-children");
-      if (children) {
-        children.classList.toggle("collapsed");
-        btn.classList.toggle("collapsed");
-      }
-    };
+  const getDirectChildren = (row) =>
+    Array.from(row.parentElement.children).find((el) =>
+      el.classList?.contains("tree-children"),
+    );
+
+  const toggleFolderRow = (row) => {
+    const children = getDirectChildren(row);
+    const toggle = row.querySelector(".tree-toggle");
+    if (!children || !toggle) return;
+
+    const isCollapsed = children.classList.toggle("collapsed");
+    toggle.classList.toggle("collapsed", isCollapsed);
+    children.toggleAttribute("inert", isCollapsed);
+    children.setAttribute("aria-hidden", String(isCollapsed));
+    row.setAttribute("aria-expanded", String(!isCollapsed));
+    row.setAttribute(
+      "aria-label",
+      `${isCollapsed ? "Expand" : "Collapse"} ${row.querySelector(".tree-label")?.textContent || "folder"}`,
+    );
+  };
+
+  container.querySelectorAll("[data-tree-trigger]").forEach((row) => {
+    row.addEventListener("click", () => toggleFolderRow(row));
+    row.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      toggleFolderRow(row);
+    });
   });
 }
 
@@ -117,12 +140,29 @@ export function renderFileList(files, container, onRemove) {
 }
 
 export function showToast(container, message, type = "success") {
+  if (!container) return;
+
+  const toastType = ["success", "error", "warning", "info"].includes(type)
+    ? type
+    : "info";
+  const toastConfig = {
+    success: { icon: "✓", title: "Success", role: "status" },
+    error: { icon: "⚠", title: "Error", role: "alert" },
+    warning: { icon: "⚡", title: "Warning", role: "status" },
+    info: { icon: "i", title: "Info", role: "status" },
+  };
+  const config = toastConfig[toastType];
+
+  container.setAttribute("aria-live", toastType === "error" ? "assertive" : "polite");
+  container.setAttribute("aria-atomic", "false");
+
   const toast = document.createElement("div");
-  toast.className = `toast ${type}`;
+  toast.className = `toast ${toastType}`;
+  toast.setAttribute("role", config.role);
   toast.innerHTML = `
-    <span class="toast-icon">${type === "success" ? "✓" : type === "error" ? "⚠" : "⚡"}</span>
+    <span class="toast-icon" aria-hidden="true">${config.icon}</span>
     <div class="toast-content">
-      <div class="toast-title">${type === "success" ? "Success" : type === "error" ? "Error" : "Warning"}</div>
+      <div class="toast-title">${config.title}</div>
       <div class="toast-desc">${escapeHtml(message)}</div>
     </div>
   `;

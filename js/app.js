@@ -349,24 +349,84 @@ export class CodeSnapshotApp {
   }
 
   collapseAll() {
-    this.els.treeContainer
-      .querySelectorAll(".tree-children")
-      .forEach((c) => c.classList.add("collapsed"));
+    const childSections = Array.from(
+      this.els.treeContainer.querySelectorAll(".tree-children"),
+    );
+    const openSections = childSections.filter(
+      (c) => !c.classList.contains("collapsed"),
+    );
+
+    if (!childSections.length) {
+      showToast(this.els.toastContainer, "No folders to collapse", "info");
+      return;
+    }
+
+    childSections.forEach((c) => {
+      c.classList.add("collapsed");
+      c.setAttribute("aria-hidden", "true");
+      c.setAttribute("inert", "");
+    });
     this.els.treeContainer
       .querySelectorAll(".tree-toggle")
       .forEach((t) => t.classList.add("collapsed"));
+    this.els.treeContainer
+      .querySelectorAll(".tree-row.folder[aria-expanded]")
+      .forEach((row) => {
+        row.setAttribute("aria-expanded", "false");
+        row.setAttribute(
+          "aria-label",
+          `Expand ${row.querySelector(".tree-label")?.textContent || "folder"}`,
+        );
+      });
     this.els.collapseAllBtn.classList.add("active");
     this.els.expandAllBtn.classList.remove("active");
+    showToast(
+      this.els.toastContainer,
+      openSections.length
+        ? `Collapsed ${openSections.length} folder${openSections.length !== 1 ? "s" : ""}`
+        : "Explorer is already collapsed",
+      openSections.length ? "success" : "info",
+    );
   }
 
   expandAll() {
-    this.els.treeContainer
-      .querySelectorAll(".tree-children")
-      .forEach((c) => c.classList.remove("collapsed"));
+    const childSections = Array.from(
+      this.els.treeContainer.querySelectorAll(".tree-children"),
+    );
+    const collapsedSections = childSections.filter((c) =>
+      c.classList.contains("collapsed"),
+    );
+
+    if (!childSections.length) {
+      showToast(this.els.toastContainer, "No folders to expand", "info");
+      return;
+    }
+
+    childSections.forEach((c) => {
+      c.classList.remove("collapsed");
+      c.setAttribute("aria-hidden", "false");
+      c.removeAttribute("inert");
+    });
     this.els.treeContainer
       .querySelectorAll(".tree-toggle")
       .forEach((t) => t.classList.remove("collapsed"));
+    this.els.treeContainer
+      .querySelectorAll(".tree-row.folder[aria-expanded]")
+      .forEach((row) => {
+        row.setAttribute("aria-expanded", "true");
+        row.setAttribute(
+          "aria-label",
+          `Collapse ${row.querySelector(".tree-label")?.textContent || "folder"}`,
+        );
+      });
     this.els.expandAllBtn.classList.add("active");
     this.els.collapseAllBtn.classList.remove("active");
+    showToast(
+      this.els.toastContainer,
+      collapsedSections.length
+        ? `Expanded ${collapsedSections.length} folder${collapsedSections.length !== 1 ? "s" : ""}`
+        : "Explorer is already expanded",
+      collapsedSections.length ? "success" : "info",
+    );
   }
 }

@@ -230,6 +230,7 @@
                 class="btn-icon"
                 id="collapseAllBtn"
                 title="Collapse All"
+                aria-label="Collapse all folders"
                 onclick="app.collapseAll()"
               >
                 <svg
@@ -250,6 +251,7 @@
                 class="btn-icon"
                 id="expandAllBtn"
                 title="Expand All"
+                aria-label="Expand all folders"
                 onclick="app.expandAll()"
               >
                 <svg
@@ -351,7 +353,12 @@
         to remove selected
       </footer>
     </div>
-    <div class="toast-container" id="toastContainer"></div>
+    <div
+      class="toast-container"
+      id="toastContainer"
+      aria-live="polite"
+      aria-atomic="false"
+    ></div>
 
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
     <script type="module" src="js/main.js"></script>
