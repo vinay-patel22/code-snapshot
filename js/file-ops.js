@@ -1,6 +1,10 @@
 // File handling utilities
 
-import { DEFAULT_IGNORED, getIgnoreReason, shouldIgnore } from "./ignore-rules.js";
+import {
+  DEFAULT_IGNORED,
+  getIgnoreReason,
+  shouldIgnore,
+} from "./ignore-rules.js";
 
 export {
   DEFAULT_IGNORED,
@@ -37,10 +41,13 @@ export function getFullPath(file, base = "") {
 }
 
 export async function readFiles(fileList, options = {}) {
-  const { maxSize = CONFIG.MAX_FILE_SIZE, ignored = DEFAULT_IGNORED } = options;
+  const { maxSize = CONFIG.MAX_FILE_SIZE, ignored = DEFAULT_IGNORED, onProgress } = options;
 
   const added = [];
   const skipped = [];
+  let fileCount = 0;
+  let lastProgressTime = Date.now();
+  const PROGRESS_THROTTLE_MS = 500;
 
   for (let i = 0; i < fileList.length; i++) {
     const file = fileList[i];
@@ -75,6 +82,15 @@ export async function readFiles(fileList, options = {}) {
       name: file.name,
       size: file.size || 0,
     });
+
+    if (onProgress) {
+      fileCount++;
+      const now = Date.now();
+      if (now - lastProgressTime >= PROGRESS_THROTTLE_MS) {
+        onProgress(fileCount);
+        lastProgressTime = now;
+      }
+    }
 
     if (i % 100 === 0) {
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -111,6 +127,16 @@ export async function processDirectoryEntry(
     return new Promise((resolve) => {
       entry.file(
         (file) => {
+          if (options.onProgress) {
+            options.fileCount = (options.fileCount || 0) + 1;
+            options.lastProgressTime = options.lastProgressTime || Date.now();
+            const now = Date.now();
+            const PROGRESS_THROTTLE_MS = 500;
+            if (now - options.lastProgressTime >= PROGRESS_THROTTLE_MS) {
+              options.onProgress(options.fileCount);
+              options.lastProgressTime = now;
+            }
+          }
           resolve([
             {
               file,

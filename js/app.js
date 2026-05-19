@@ -107,6 +107,7 @@ export class CodeSnapshotApp {
       totalSize: document.getElementById("totalSize"),
       fileListCount: document.getElementById("fileListCount"),
       selectedCount: document.getElementById("selectedCount"),
+      selectFolderBtn: document.getElementById("selectFolderBtn"),
       clearBtn: document.getElementById("clearBtn"),
       downloadTxtBtn: document.getElementById("downloadTxtBtn"),
       downloadZipBtn: document.getElementById("downloadZipBtn"),
@@ -198,11 +199,16 @@ export class CodeSnapshotApp {
       this.els.sortSelect.value = this.filter.sort;
     }
 
-    const savedWidth = Number(this.getStoredValue(STORAGE_KEYS.sidebarWidth, ""));
+    const savedWidth = Number(
+      this.getStoredValue(STORAGE_KEYS.sidebarWidth, ""),
+    );
     if (savedWidth && this.els.sidebar) {
       const width = Math.max(280, Math.min(500, savedWidth));
       this.els.sidebar.style.width = `${width}px`;
-      document.documentElement.style.setProperty("--sidebar-width", `${width}px`);
+      document.documentElement.style.setProperty(
+        "--sidebar-width",
+        `${width}px`,
+      );
     }
   }
 
@@ -232,7 +238,10 @@ export class CodeSnapshotApp {
         Math.min(500, startWidth + (e.clientX - startX)),
       );
       sidebar.style.width = `${newWidth}px`;
-      document.documentElement.style.setProperty("--sidebar-width", `${newWidth}px`);
+      document.documentElement.style.setProperty(
+        "--sidebar-width",
+        `${newWidth}px`,
+      );
     };
 
     const onMouseUp = () => {
@@ -241,7 +250,10 @@ export class CodeSnapshotApp {
       handle.classList.remove("resizing");
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
-      this.setStoredValue(STORAGE_KEYS.sidebarWidth, String(sidebar.offsetWidth));
+      this.setStoredValue(
+        STORAGE_KEYS.sidebarWidth,
+        String(sidebar.offsetWidth),
+      );
     };
 
     handle.addEventListener("mousedown", onMouseDown);
@@ -294,18 +306,44 @@ export class CodeSnapshotApp {
 
   selectFolder() {
     if (!this.els.folderInput) {
-      showToast(this.els.toastContainer, "Folder selection is not supported", "warning");
+      showToast(
+        this.els.toastContainer,
+        "Folder selection is not supported",
+        "warning",
+      );
       return;
     }
+    this.els.selectFolderBtn.disabled = true;
+    this.showLoading(true, "Opening folder picker...");
     this.els.folderInput.value = "";
     setTimeout(() => this.els.folderInput.click(), 50);
   }
 
   async handleFiles(fileList, inputEl) {
-    if (!fileList?.length) return;
+    if (!fileList?.length) {
+      this.showLoading(false);
+      return;
+    }
 
     this.showLoading(true, "Reading files...");
-    const added = await readFiles(fileList, { ignored: DEFAULT_IGNORED });
+
+    let fileCount = 0;
+    const onProgress = (count) => {
+      fileCount = count;
+      const progressPercent = Math.min(
+        50,
+        Math.log10(count + 1) * 10,
+      );
+      this.updateProgress(
+        progressPercent,
+        `Reading: ${count.toLocaleString()} files found...`,
+      );
+    };
+
+    const added = await readFiles(fileList, {
+      ignored: DEFAULT_IGNORED,
+      onProgress,
+    });
     this.mergeIgnoredItems(added.skipped || []);
     added.forEach((f) => this.files.set(f.path, f));
 
@@ -327,9 +365,23 @@ export class CodeSnapshotApp {
     const dt = e.dataTransfer;
     if (!dt?.items?.length && !dt?.files?.length) return;
 
+    this.els.selectFolderBtn.disabled = true;
     this.showLoading(true, "Processing drop...");
     let added = [];
     let skipped = [];
+    let fileCount = 0;
+
+    const onProgress = (count) => {
+      fileCount = count;
+      const progressPercent = Math.min(
+        50,
+        Math.log10(count + 1) * 10,
+      );
+      this.updateProgress(
+        progressPercent,
+        `Reading: ${count.toLocaleString()} files found...`,
+      );
+    };
 
     if (dt.items?.[0]?.webkitGetAsEntry) {
       const entries = Array.from(dt.items)
@@ -341,6 +393,7 @@ export class CodeSnapshotApp {
         const entrySkipped = [];
         const files = await processDirectoryEntry(entry, "", DEFAULT_IGNORED, {
           skipped: entrySkipped,
+          onProgress,
         });
         skipped = skipped.concat(entrySkipped);
         added = added.concat(files);
@@ -348,7 +401,10 @@ export class CodeSnapshotApp {
     }
 
     if (!added.length && dt.files?.length) {
-      added = await readFiles(dt.files, { ignored: DEFAULT_IGNORED });
+      added = await readFiles(dt.files, {
+        ignored: DEFAULT_IGNORED,
+        onProgress,
+      });
       skipped = skipped.concat(added.skipped || []);
     }
 
@@ -440,7 +496,10 @@ export class CodeSnapshotApp {
       });
     }
 
-    if (SECURITY_FILE_EXTENSIONS.has(extension) || SECRET_PATH_RE.test(lowerPath)) {
+    if (
+      SECURITY_FILE_EXTENSIONS.has(extension) ||
+      SECRET_PATH_RE.test(lowerPath)
+    ) {
       warnings.push({
         type: "secret-path",
         severity: "error",
@@ -448,7 +507,11 @@ export class CodeSnapshotApp {
       });
     }
 
-    if (!isAsset && fileInfo.size > 0 && fileInfo.size <= CONFIG.SAFETY_SCAN_TEXT_LIMIT) {
+    if (
+      !isAsset &&
+      fileInfo.size > 0 &&
+      fileInfo.size <= CONFIG.SAFETY_SCAN_TEXT_LIMIT
+    ) {
       try {
         const sample = await fileInfo.file
           .slice(0, CONFIG.SAFETY_SCAN_TEXT_LIMIT)
@@ -459,7 +522,10 @@ export class CodeSnapshotApp {
             severity: "warning",
             message: "Unsupported binary-like content",
           });
-        } else if (SECRET_VALUE_RE.test(sample) || PRIVATE_KEY_RE.test(sample)) {
+        } else if (
+          SECRET_VALUE_RE.test(sample) ||
+          PRIVATE_KEY_RE.test(sample)
+        ) {
           warnings.push({
             type: "secret-content",
             severity: "error",
@@ -542,14 +608,19 @@ export class CodeSnapshotApp {
       if (this.excludedPaths.has(fileInfo.path)) counts.excluded++;
     });
 
-    this.els.categoryChips?.querySelectorAll("[data-category]").forEach((chip) => {
-      const category = chip.dataset.category;
-      chip.classList.toggle("active", category === this.filter.category);
-      const countEl = chip.querySelector("span");
-      if (countEl) countEl.textContent = counts[category] ?? 0;
-    });
+    this.els.categoryChips
+      ?.querySelectorAll("[data-category]")
+      .forEach((chip) => {
+        const category = chip.dataset.category;
+        chip.classList.toggle("active", category === this.filter.category);
+        const countEl = chip.querySelector("span");
+        if (countEl) countEl.textContent = counts[category] ?? 0;
+      });
 
-    if (this.els.fileSearch && this.els.fileSearch.value !== this.filter.query) {
+    if (
+      this.els.fileSearch &&
+      this.els.fileSearch.value !== this.filter.query
+    ) {
       this.els.fileSearch.value = this.filter.query;
     }
     this.els.clearSearchBtn?.toggleAttribute("hidden", !this.filter.query);
@@ -614,12 +685,14 @@ export class CodeSnapshotApp {
 
   setExportButtonsState(disabled) {
     const hasExportFiles = this.getExportFiles().length > 0;
-    [this.els.downloadTxtBtn, this.els.downloadZipBtn, this.els.downloadAiBtn].forEach(
-      (button) => {
-        if (!button) return;
-        button.disabled = disabled || !hasExportFiles;
-      },
-    );
+    [
+      this.els.downloadTxtBtn,
+      this.els.downloadZipBtn,
+      this.els.downloadAiBtn,
+    ].forEach((button) => {
+      if (!button) return;
+      button.disabled = disabled || !hasExportFiles;
+    });
   }
 
   showLoading(show, text = "Processing...") {
@@ -627,6 +700,9 @@ export class CodeSnapshotApp {
     this.els.progressBar.style.width = "0%";
     this.els.loading.classList.toggle("active", show);
     this.els.cancelBtn.style.display = show ? "block" : "none";
+    if (!show) {
+      this.els.selectFolderBtn.disabled = false;
+    }
   }
 
   updateProgress(percent, text) {
@@ -639,7 +715,11 @@ export class CodeSnapshotApp {
 
     const exportFiles = this.getExportEntries();
     if (!exportFiles.length) {
-      showToast(this.els.toastContainer, "No included files to export", "warning");
+      showToast(
+        this.els.toastContainer,
+        "No included files to export",
+        "warning",
+      );
       return;
     }
 
@@ -682,7 +762,11 @@ export class CodeSnapshotApp {
         zip: "application/zip",
         ai: "text/markdown",
       };
-      downloadBlob(blob, fileNames[type] || "code-snapshot.txt", mimeTypes[type]);
+      downloadBlob(
+        blob,
+        fileNames[type] || "code-snapshot.txt",
+        mimeTypes[type],
+      );
 
       if (!this.exportCancelled) {
         showToast(
@@ -746,7 +830,11 @@ export class CodeSnapshotApp {
     const count = this.excludedPaths.size;
     this.excludedPaths.clear();
     this.updateUI();
-    showToast(this.els.toastContainer, `Included ${count} file${count !== 1 ? "s" : ""}`, "success");
+    showToast(
+      this.els.toastContainer,
+      `Included ${count} file${count !== 1 ? "s" : ""}`,
+      "success",
+    );
   }
 
   excludeWarningFiles() {
@@ -765,7 +853,9 @@ export class CodeSnapshotApp {
     const visibleIncluded = this.getVisibleFiles().filter(
       (fileInfo) => !this.excludedPaths.has(fileInfo.path),
     );
-    visibleIncluded.forEach((fileInfo) => this.excludedPaths.add(fileInfo.path));
+    visibleIncluded.forEach((fileInfo) =>
+      this.excludedPaths.add(fileInfo.path),
+    );
     this.selectedPaths.clear();
     this.updateUI();
     showToast(
@@ -778,10 +868,16 @@ export class CodeSnapshotApp {
   removeSelectedFiles() {
     const count = this.selectedPaths.size;
     if (!count) return;
-    Array.from(this.selectedPaths).forEach((path) => this.removeFileSilently(path));
+    Array.from(this.selectedPaths).forEach((path) =>
+      this.removeFileSilently(path),
+    );
     this.selectedPaths.clear();
     this.updateUI();
-    showToast(this.els.toastContainer, `Removed ${count} selected file${count !== 1 ? "s" : ""}`, "success");
+    showToast(
+      this.els.toastContainer,
+      `Removed ${count} selected file${count !== 1 ? "s" : ""}`,
+      "success",
+    );
   }
 
   removeFilteredFiles() {
@@ -789,7 +885,9 @@ export class CodeSnapshotApp {
     if (!visibleFiles.length) return;
     if (
       visibleFiles.length > 20 &&
-      !confirm(`Remove ${visibleFiles.length} filtered files from the current snapshot?`)
+      !confirm(
+        `Remove ${visibleFiles.length} filtered files from the current snapshot?`,
+      )
     ) {
       return;
     }
@@ -882,7 +980,10 @@ export class CodeSnapshotApp {
       return;
     }
 
-    if ((e.key === "Delete" || e.key === "Backspace") && this.selectedPaths.size) {
+    if (
+      (e.key === "Delete" || e.key === "Backspace") &&
+      this.selectedPaths.size
+    ) {
       e.preventDefault();
       this.removeSelectedFiles();
       return;
@@ -944,7 +1045,9 @@ export class CodeSnapshotApp {
       if (sort === "size-desc") return (b.size || 0) - (a.size || 0);
       if (sort === "size-asc") return (a.size || 0) - (b.size || 0);
       if (sort === "type-asc") {
-        const byType = this.getFileCategory(a).localeCompare(this.getFileCategory(b));
+        const byType = this.getFileCategory(a).localeCompare(
+          this.getFileCategory(b),
+        );
         return byType || a.path.localeCompare(b.path);
       }
       return a.path.localeCompare(b.path);
@@ -953,7 +1056,9 @@ export class CodeSnapshotApp {
   }
 
   getExportFiles() {
-    return this.getAllFiles().filter((fileInfo) => !this.excludedPaths.has(fileInfo.path));
+    return this.getAllFiles().filter(
+      (fileInfo) => !this.excludedPaths.has(fileInfo.path),
+    );
   }
 
   getExportEntries() {
@@ -966,7 +1071,9 @@ export class CodeSnapshotApp {
 
   getWarningPaths() {
     return Array.from(this.warnings.entries())
-      .filter(([, warnings]) => warnings.some((warning) => warning.severity !== "info"))
+      .filter(([, warnings]) =>
+        warnings.some((warning) => warning.severity !== "info"),
+      )
       .map(([path]) => path);
   }
 
@@ -1001,7 +1108,10 @@ export class CodeSnapshotApp {
       ignoredItems: this.ignoredItems.length,
       warningCount,
       filters: { ...this.filter },
-      exportSize: files.reduce((sum, fileInfo) => sum + (fileInfo.size || 0), 0),
+      exportSize: files.reduce(
+        (sum, fileInfo) => sum + (fileInfo.size || 0),
+        0,
+      ),
     };
   }
 
