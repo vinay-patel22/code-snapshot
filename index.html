@@ -18,6 +18,12 @@
     />
     <meta name="theme-color" content="#0a0a0b" />
 
+    <!-- Content Security Policy -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self';"
+    />
+
     <!-- Open Graph / Social Media -->
     <meta property="og:type" content="website" />
     <meta
@@ -234,7 +240,9 @@
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <path d="M12 3l1.9 5.8L20 10.7l-5 3.6 1.9 5.7-4.9-3.6L7.1 20l1.9-5.7-5-3.6 6.1-1.9L12 3z"></path>
+              <path
+                d="M12 3l1.9 5.8L20 10.7l-5 3.6 1.9 5.7-4.9-3.6L7.1 20l1.9-5.7-5-3.6 6.1-1.9L12 3z"
+              ></path>
             </svg>
             AI Snapshot
           </button>
@@ -385,7 +393,11 @@
               </div>
             </div>
             <div class="chip-row" id="categoryChips" aria-label="File filters">
-              <button class="filter-chip active" data-category="all" type="button">
+              <button
+                class="filter-chip active"
+                data-category="all"
+                type="button"
+              >
                 All <span>0</span>
               </button>
               <button class="filter-chip" data-category="code" type="button">
@@ -400,10 +412,18 @@
               <button class="filter-chip" data-category="assets" type="button">
                 Assets <span>0</span>
               </button>
-              <button class="filter-chip" data-category="warnings" type="button">
+              <button
+                class="filter-chip"
+                data-category="warnings"
+                type="button"
+              >
                 Warnings <span>0</span>
               </button>
-              <button class="filter-chip" data-category="excluded" type="button">
+              <button
+                class="filter-chip"
+                data-category="excluded"
+                type="button"
+              >
                 Excluded <span>0</span>
               </button>
             </div>
@@ -414,7 +434,11 @@
               </div>
               <div class="warning-list" id="warningList"></div>
               <div class="bulk-actions">
-                <button class="btn btn-compact" id="includeAllBtn" type="button">
+                <button
+                  class="btn btn-compact"
+                  id="includeAllBtn"
+                  type="button"
+                >
                   Include All
                 </button>
                 <button
@@ -473,7 +497,9 @@
                 Selected Files
               </div>
               <div class="file-list-meta">
-                <span class="selected-count" id="selectedCount">0 selected</span>
+                <span class="selected-count" id="selectedCount"
+                  >0 selected</span
+                >
                 <span class="file-list-count" id="fileListCount">0 items</span>
               </div>
             </div>

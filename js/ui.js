@@ -1,21 +1,14 @@
 // UI rendering
+import {
+  formatBytes,
+  escapeHtml,
+  escapeAttr as escapeAttrUtil,
+  debounce,
+} from "./utils.js";
 
-export function formatBytes(bytes) {
-  if (!bytes) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return (bytes / 1024 ** i).toFixed(i ? 1 : 0) + " " + units[i];
-}
-
-export function escapeHtml(value) {
-  const div = document.createElement("div");
-  div.textContent = String(value ?? "");
-  return div.innerHTML;
-}
-
-function escapeAttr(value) {
-  return escapeHtml(value).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
+export { formatBytes, escapeHtml, debounce };
+export const escapeAttr = escapeAttrUtil;
+export const escapeForAttr = escapeAttrUtil;
 
 function encodePath(path) {
   return encodeURIComponent(path);
@@ -204,7 +197,10 @@ export function showToast(container, message, type = "success") {
   };
   const config = toastConfig[toastType];
 
-  container.setAttribute("aria-live", toastType === "error" ? "assertive" : "polite");
+  container.setAttribute(
+    "aria-live",
+    toastType === "error" ? "assertive" : "polite",
+  );
   container.setAttribute("aria-atomic", "false");
 
   while (container.children.length > 3) {

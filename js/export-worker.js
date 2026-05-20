@@ -1,5 +1,12 @@
 // Web Worker for heavy export tasks. No network dependencies.
 
+function formatBytes(bytes) {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(i ? 1 : 0) + " " + units[i];
+}
+
 let cancelled = false;
 let activeType = "";
 let exportOptions = {};
@@ -193,7 +200,9 @@ ${indexRows || "| - | - | - | - |"}
 function renderAiFile(fileInfo) {
   const warnings = fileInfo.warnings || [];
   const warningText = warnings.length
-    ? warnings.map((warning) => `- ${warning.severity}: ${warning.message}`).join("\n")
+    ? warnings
+        .map((warning) => `- ${warning.severity}: ${warning.message}`)
+        .join("\n")
     : "- none";
 
   if (looksBinary(fileInfo.data)) {
@@ -337,7 +346,9 @@ function sanitizeZipPath(path) {
 
 async function createZip(entries) {
   if (entries.length > 65535) {
-    throw new Error("ZIP export supports up to 65,535 files in this browser build");
+    throw new Error(
+      "ZIP export supports up to 65,535 files in this browser build",
+    );
   }
 
   const encoder = new TextEncoder();
@@ -352,7 +363,11 @@ async function createZip(entries) {
     const compressed = await compressForZip(data);
     const crc = crc32(data);
 
-    if (data.length > 0xffffffff || compressed.data.length > 0xffffffff || offset > 0xffffffff) {
+    if (
+      data.length > 0xffffffff ||
+      compressed.data.length > 0xffffffff ||
+      offset > 0xffffffff
+    ) {
       throw new Error("ZIP export is too large for the local ZIP writer");
     }
 
@@ -414,7 +429,9 @@ async function compressForZip(data) {
   }
 
   try {
-    const stream = new Blob([data]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+    const stream = new Blob([data])
+      .stream()
+      .pipeThrough(new CompressionStream("deflate-raw"));
     const compressed = new Uint8Array(await new Response(stream).arrayBuffer());
     if (compressed.length && compressed.length < data.length) {
       return { data: compressed, method: 8 };
@@ -440,7 +457,9 @@ function concatUint8Arrays(parts) {
 function getDosDateTime(date) {
   const year = Math.max(1980, date.getFullYear());
   const dosTime =
-    (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
+    (date.getHours() << 11) |
+    (date.getMinutes() << 5) |
+    Math.floor(date.getSeconds() / 2);
   const dosDate =
     ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
   return { date: dosDate, time: dosTime };
@@ -465,11 +484,4 @@ function crc32(data) {
     crc = crcTable[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
   }
   return (crc ^ 0xffffffff) >>> 0;
-}
-
-function formatBytes(bytes) {
-  if (!bytes) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return (bytes / Math.pow(1024, i)).toFixed(i ? 1 : 0) + " " + units[i];
 }

@@ -7,7 +7,15 @@ import {
   readFiles,
   processDirectoryEntry,
 } from "./file-ops.js";
-import { renderTree, renderFileList, showToast, formatBytes } from "./ui.js";
+import {
+  renderTree,
+  renderFileList,
+  showToast,
+  formatBytes,
+  debounce,
+} from "./ui.js";
+import { UI_CONSTANTS, EXPORT_CONSTANTS, TREE_CONSTANTS } from "./constants.js";
+import { createMemoizedCache } from "./utils.js";
 
 const STORAGE_KEYS = {
   sidebarWidth: "codeSnapshot.sidebarWidth",
@@ -84,6 +92,14 @@ export class CodeSnapshotApp {
       sort: this.getStoredValue(STORAGE_KEYS.sort, "path-asc"),
     };
 
+    this.caches = {
+      allFiles: createMemoizedCache(),
+      visibleFiles: createMemoizedCache(),
+      exportFiles: createMemoizedCache(),
+      fileCategory: createMemoizedCache(),
+      warningPaths: createMemoizedCache(),
+    };
+
     this.els = {
       dropZone: document.getElementById("dropZone"),
       handoffPanel: document.getElementById("handoffPanel"),
@@ -132,6 +148,14 @@ export class CodeSnapshotApp {
     this.updateUI();
   }
 
+  clearCaches() {
+    this.caches.allFiles.clear();
+    this.caches.visibleFiles.clear();
+    this.caches.exportFiles.clear();
+    this.caches.fileCategory.clear();
+    this.caches.warningPaths.clear();
+  }
+
   bindEvents() {
     this.els.fileInput?.addEventListener("change", (e) => {
       this.handleFiles(e.target.files, this.els.fileInput);
@@ -143,10 +167,13 @@ export class CodeSnapshotApp {
 
     this.els.clearBtn.onclick = () => this.clearAll();
 
-    this.els.fileSearch?.addEventListener("input", (e) => {
-      this.filter.query = e.target.value.trim().toLowerCase();
-      this.updateUI();
-    });
+    this.els.fileSearch?.addEventListener(
+      "input",
+      debounce((e) => {
+        this.filter.query = e.target.value.trim().toLowerCase();
+        this.updateUI();
+      }, UI_CONSTANTS.DEBOUNCE_DELAY_MS),
+    );
 
     this.els.clearSearchBtn?.addEventListener("click", () => {
       this.filter.query = "";
@@ -203,7 +230,10 @@ export class CodeSnapshotApp {
       this.getStoredValue(STORAGE_KEYS.sidebarWidth, ""),
     );
     if (savedWidth && this.els.sidebar) {
-      const width = Math.max(280, Math.min(500, savedWidth));
+      const width = Math.max(
+        UI_CONSTANTS.SIDEBAR_MIN_WIDTH,
+        Math.min(UI_CONSTANTS.SIDEBAR_MAX_WIDTH, savedWidth),
+      );
       this.els.sidebar.style.width = `${width}px`;
       document.documentElement.style.setProperty(
         "--sidebar-width",
@@ -234,8 +264,11 @@ export class CodeSnapshotApp {
     const onMouseMove = (e) => {
       if (!isResizing) return;
       const newWidth = Math.max(
-        280,
-        Math.min(500, startWidth + (e.clientX - startX)),
+        UI_CONSTANTS.SIDEBAR_MIN_WIDTH,
+        Math.min(
+          UI_CONSTANTS.SIDEBAR_MAX_WIDTH,
+          startWidth + (e.clientX - startX),
+        ),
       );
       sidebar.style.width = `${newWidth}px`;
       document.documentElement.style.setProperty(
@@ -301,7 +334,10 @@ export class CodeSnapshotApp {
 
   selectFiles() {
     this.els.fileInput.value = "";
-    setTimeout(() => this.els.fileInput.click(), 50);
+    setTimeout(
+      () => this.els.fileInput.click(),
+      UI_CONSTANTS.FILE_INPUT_CLICK_DELAY_MS,
+    );
   }
 
   selectFolder() {
@@ -316,7 +352,10 @@ export class CodeSnapshotApp {
     this.els.selectFolderBtn.disabled = true;
     this.showLoading(true, "Opening folder picker...");
     this.els.folderInput.value = "";
-    setTimeout(() => this.els.folderInput.click(), 50);
+    setTimeout(
+      () => this.els.folderInput.click(),
+      UI_CONSTANTS.FILE_INPUT_CLICK_DELAY_MS,
+    );
   }
 
   async handleFiles(fileList, inputEl) {
@@ -326,12 +365,13 @@ export class CodeSnapshotApp {
     }
 
     this.showLoading(true, "Reading files...");
+    this.clearCaches();
 
     let fileCount = 0;
     const onProgress = (count) => {
       fileCount = count;
       const progressPercent = Math.min(
-        50,
+        EXPORT_CONSTANTS.PROGRESS_PERCENT_READING,
         Math.log10(count + 1) * 10,
       );
       this.updateProgress(
@@ -356,7 +396,7 @@ export class CodeSnapshotApp {
     this.updateUI();
     setTimeout(() => {
       if (inputEl) inputEl.value = "";
-    }, 100);
+    }, UI_CONSTANTS.INPUT_CLEAR_DELAY_MS);
 
     this.showImportToast("Added", added.length, added.skipped?.length || 0);
   }
@@ -367,6 +407,7 @@ export class CodeSnapshotApp {
 
     this.els.selectFolderBtn.disabled = true;
     this.showLoading(true, "Processing drop...");
+    this.clearCaches();
     let added = [];
     let skipped = [];
     let fileCount = 0;
@@ -374,7 +415,7 @@ export class CodeSnapshotApp {
     const onProgress = (count) => {
       fileCount = count;
       const progressPercent = Math.min(
-        50,
+        EXPORT_CONSTANTS.PROGRESS_PERCENT_READING,
         Math.log10(count + 1) * 10,
       );
       this.updateProgress(
@@ -448,7 +489,9 @@ export class CodeSnapshotApp {
     for (const item of items) {
       existing.set(`${item.path}:${item.reason}`, item);
     }
-    this.ignoredItems = Array.from(existing.values()).slice(-1000);
+    this.ignoredItems = Array.from(existing.values()).slice(
+      -UI_CONSTANTS.IGNORED_ITEMS_MAX,
+    );
   }
 
   async scanFiles(files) {
@@ -460,10 +503,11 @@ export class CodeSnapshotApp {
       } else {
         this.warnings.delete(fileInfo.path);
       }
-      if (i % 25 === 0) {
+      if (i % UI_CONSTANTS.SCAN_FILES_YIELD_INTERVAL === 0) {
         await new Promise((resolve) => setTimeout(resolve, 0));
       }
     }
+    this.caches.warningPaths.clear();
   }
 
   async getFileSafetyWarnings(fileInfo) {
@@ -706,7 +750,10 @@ export class CodeSnapshotApp {
   }
 
   updateProgress(percent, text) {
-    this.els.progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    this.els.progressBar.style.width = `${Math.min(
+      UI_CONSTANTS.PROGRESS_MAX_PERCENT,
+      Math.max(UI_CONSTANTS.PROGRESS_MIN_PERCENT, percent),
+    )}%`;
     if (text) this.els.loadingText.textContent = text;
   }
 
@@ -805,11 +852,23 @@ export class CodeSnapshotApp {
     showToast(this.els.toastContainer, "Export cancelled", "warning");
   }
 
+  includeAll() {
+    const count = this.excludedPaths.size;
+    this.excludedPaths.clear();
+    this.updateUI();
+    showToast(
+      this.els.toastContainer,
+      `Included ${count} file${count !== 1 ? "s" : ""}`,
+      "success",
+    );
+  }
+
   removeFile(path) {
     this.files.delete(path);
     this.warnings.delete(path);
     this.selectedPaths.delete(path);
     this.excludedPaths.delete(path);
+    this.clearCaches();
     this.updateUI();
     showToast(this.els.toastContainer, "File removed", "success");
   }
@@ -820,21 +879,9 @@ export class CodeSnapshotApp {
     this.ignoredItems = [];
     this.selectedPaths.clear();
     this.excludedPaths.clear();
-    this.filter.query = "";
-    if (this.els.fileSearch) this.els.fileSearch.value = "";
+    this.clearCaches();
     this.updateUI();
-    showToast(this.els.toastContainer, "All files cleared", "success");
-  }
-
-  includeAll() {
-    const count = this.excludedPaths.size;
-    this.excludedPaths.clear();
-    this.updateUI();
-    showToast(
-      this.els.toastContainer,
-      `Included ${count} file${count !== 1 ? "s" : ""}`,
-      "success",
-    );
+    showToast(this.els.toastContainer, "Cleared all files", "success");
   }
 
   excludeWarningFiles() {
@@ -872,6 +919,7 @@ export class CodeSnapshotApp {
       this.removeFileSilently(path),
     );
     this.selectedPaths.clear();
+    this.clearCaches();
     this.updateUI();
     showToast(
       this.els.toastContainer,
@@ -892,6 +940,7 @@ export class CodeSnapshotApp {
       return;
     }
     visibleFiles.forEach((fileInfo) => this.removeFileSilently(fileInfo.path));
+    this.clearCaches();
     this.updateUI();
     showToast(
       this.els.toastContainer,
@@ -1013,12 +1062,22 @@ export class CodeSnapshotApp {
   }
 
   getAllFiles() {
-    return Array.from(this.files.values()).sort((a, b) =>
+    const cacheKey = this.files.size;
+    if (this.caches.allFiles.has(cacheKey)) {
+      return this.caches.allFiles.get(cacheKey);
+    }
+    const result = Array.from(this.files.values()).sort((a, b) =>
       a.path.localeCompare(b.path),
     );
+    this.caches.allFiles.set(cacheKey, result);
+    return result;
   }
 
   getVisibleFiles() {
+    const cacheKey = `${this.files.size}|${this.filter.query}|${this.filter.category}|${this.filter.sort}`;
+    if (this.caches.visibleFiles.has(cacheKey)) {
+      return this.caches.visibleFiles.get(cacheKey);
+    }
     const query = this.filter.query;
     const category = this.filter.category;
     const files = this.getAllFiles().filter((fileInfo) => {
@@ -1034,7 +1093,9 @@ export class CodeSnapshotApp {
       return this.getFileCategory(fileInfo) === category;
     });
 
-    return this.sortFiles(files);
+    const result = this.sortFiles(files);
+    this.caches.visibleFiles.set(cacheKey, result);
+    return result;
   }
 
   sortFiles(files) {
@@ -1056,9 +1117,15 @@ export class CodeSnapshotApp {
   }
 
   getExportFiles() {
-    return this.getAllFiles().filter(
+    const cacheKey = `${this.files.size}|${this.excludedPaths.size}`;
+    if (this.caches.exportFiles.has(cacheKey)) {
+      return this.caches.exportFiles.get(cacheKey);
+    }
+    const result = this.getAllFiles().filter(
       (fileInfo) => !this.excludedPaths.has(fileInfo.path),
     );
+    this.caches.exportFiles.set(cacheKey, result);
+    return result;
   }
 
   getExportEntries() {
@@ -1070,20 +1137,39 @@ export class CodeSnapshotApp {
   }
 
   getWarningPaths() {
-    return Array.from(this.warnings.entries())
+    const cacheKey = `${this.warnings.size}`;
+    if (this.caches.warningPaths.has(cacheKey)) {
+      return this.caches.warningPaths.get(cacheKey);
+    }
+    const result = Array.from(this.warnings.entries())
       .filter(([, warnings]) =>
         warnings.some((warning) => warning.severity !== "info"),
       )
       .map(([path]) => path);
+    this.caches.warningPaths.set(cacheKey, result);
+    return result;
   }
 
   getFileCategory(fileInfo) {
+    const cacheKey = fileInfo.path;
+    if (this.caches.fileCategory.has(cacheKey)) {
+      return this.caches.fileCategory.get(cacheKey);
+    }
     const extension = getExtension(fileInfo.path);
-    if (this.isBinaryLikeFile(fileInfo)) return "assets";
-    if (DOC_EXTENSIONS.has(extension)) return "docs";
-    if (CONFIG_EXTENSIONS.has(extension)) return "config";
-    if (CODE_EXTENSIONS.has(extension)) return "code";
-    return "code";
+    let result;
+    if (this.isBinaryLikeFile(fileInfo)) {
+      result = "assets";
+    } else if (DOC_EXTENSIONS.has(extension)) {
+      result = "docs";
+    } else if (CONFIG_EXTENSIONS.has(extension)) {
+      result = "config";
+    } else if (CODE_EXTENSIONS.has(extension)) {
+      result = "code";
+    } else {
+      result = "other";
+    }
+    this.caches.fileCategory.set(cacheKey, result);
+    return result;
   }
 
   isBinaryLikeFile(fileInfo) {

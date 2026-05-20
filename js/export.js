@@ -1,4 +1,5 @@
 // Export functions (Worker-backed, local-only)
+import { EXPORT_CONSTANTS, UI_CONSTANTS } from "./constants.js";
 
 export async function startExportWorker(
   type,
@@ -16,7 +17,10 @@ export async function startExportWorker(
       return;
     }
 
-    const CHUNK_SIZE = type === "zip" ? 40 : 50;
+    const CHUNK_SIZE =
+      type === "zip"
+        ? EXPORT_CONSTANTS.ZIP_CHUNK_SIZE
+        : EXPORT_CONSTANTS.TXT_CHUNK_SIZE;
     const totalChunks = Math.ceil(filesArray.length / CHUNK_SIZE);
     let nextChunkIndex = 0;
     let completedChunks = 0;
@@ -46,9 +50,12 @@ export async function startExportWorker(
         completedChunks++;
 
         if (completedChunks >= msg.totalChunks) {
-          const finalBlob = new Blob(msgType === "aiChunk" ? aiBlobs : txtBlobs, {
-            type: msgType === "aiChunk" ? "text/markdown" : "text/plain",
-          });
+          const finalBlob = new Blob(
+            msgType === "aiChunk" ? aiBlobs : txtBlobs,
+            {
+              type: msgType === "aiChunk" ? "text/markdown" : "text/plain",
+            },
+          );
           worker.terminate();
           onProgress?.(100, "Export ready");
           resolve(finalBlob);
@@ -161,7 +168,8 @@ export async function startExportWorker(
 
 export function downloadBlob(blob, filename, mime) {
   mime = mime || blob.type || "application/octet-stream";
-  const typedBlob = blob.type === mime ? blob : new Blob([blob], { type: mime });
+  const typedBlob =
+    blob.type === mime ? blob : new Blob([blob], { type: mime });
   const url = URL.createObjectURL(typedBlob);
   const a = document.createElement("a");
   a.href = url;
@@ -171,5 +179,5 @@ export function downloadBlob(blob, filename, mime) {
   a.remove();
   setTimeout(function () {
     URL.revokeObjectURL(url);
-  }, 100);
+  }, UI_CONSTANTS.URL_REVOKE_DELAY_MS);
 }

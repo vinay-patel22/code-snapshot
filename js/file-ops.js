@@ -5,6 +5,7 @@ import {
   getIgnoreReason,
   shouldIgnore,
 } from "./ignore-rules.js";
+import { formatBytes } from "./utils.js";
 
 export {
   DEFAULT_IGNORED,
@@ -14,6 +15,7 @@ export {
   getIgnoreReason,
   shouldIgnore,
 } from "./ignore-rules.js";
+export { formatBytes };
 
 export const CONFIG = {
   MAX_FILE_SIZE: 50 * 1024 * 1024,
@@ -27,13 +29,6 @@ export function normalizePath(p) {
   return (p || "").replace(/\\/g, "/");
 }
 
-function formatBytes(bytes) {
-  if (!bytes) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return (bytes / 1024 ** i).toFixed(i ? 1 : 0) + " " + units[i];
-}
-
 export function getFullPath(file, base = "") {
   const path =
     file.webkitRelativePath || (base ? `${base}/${file.name}` : file.name);
@@ -41,7 +36,11 @@ export function getFullPath(file, base = "") {
 }
 
 export async function readFiles(fileList, options = {}) {
-  const { maxSize = CONFIG.MAX_FILE_SIZE, ignored = DEFAULT_IGNORED, onProgress } = options;
+  const {
+    maxSize = CONFIG.MAX_FILE_SIZE,
+    ignored = DEFAULT_IGNORED,
+    onProgress,
+  } = options;
 
   const added = [];
   const skipped = [];
