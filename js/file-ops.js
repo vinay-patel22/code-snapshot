@@ -1,19 +1,28 @@
 // File handling utilities
 
-import { DEFAULT_IGNORED, shouldIgnore } from "./ignore-rules.js";
+import {
+  DEFAULT_IGNORED,
+  getIgnoreReason,
+  shouldIgnore,
+} from "./ignore-rules.js";
+import { formatBytes } from "./utils.js";
 
 export {
   DEFAULT_IGNORED,
   ASSET_FILE_EXTENSIONS,
   STYLE_FILE_EXTENSIONS,
   SECURITY_FILE_EXTENSIONS,
+  getIgnoreReason,
   shouldIgnore,
 } from "./ignore-rules.js";
+export { formatBytes };
 
 export const CONFIG = {
   MAX_FILE_SIZE: 50 * 1024 * 1024,
   CHUNK_SIZE: 10,
   MAX_TXT_EXPORT_SIZE: 200 * 1024 * 1024,
+  LARGE_FILE_WARNING_SIZE: 5 * 1024 * 1024,
+  SAFETY_SCAN_TEXT_LIMIT: 64 * 1024,
 };
 
 export function normalizePath(p) {
@@ -27,16 +36,44 @@ export function getFullPath(file, base = "") {
 }
 
 export async function readFiles(fileList, options = {}) {
-  const { maxSize = CONFIG.MAX_FILE_SIZE, ignored = DEFAULT_IGNORED } = options;
+  const {
+    maxSize = CONFIG.MAX_FILE_SIZE,
+    ignored = DEFAULT_IGNORED,
+    onProgress,
+  } = options;
 
   const added = [];
+  const skipped = [];
+  let fileCount = 0;
+  let lastProgressTime = Date.now();
+  const PROGRESS_THROTTLE_MS = 500;
 
   for (let i = 0; i < fileList.length; i++) {
     const file = fileList[i];
-    if (file.size > maxSize) continue;
-
     const path = getFullPath(file);
-    if (shouldIgnore(path, ignored)) continue;
+
+    if (file.size > maxSize) {
+      skipped.push({
+        path,
+        name: file.name,
+        size: file.size || 0,
+        reason: `Larger than ${formatBytes(maxSize)} file limit`,
+        category: "large",
+      });
+      continue;
+    }
+
+    const ignore = getIgnoreReason(path, ignored);
+    if (ignore.ignored) {
+      skipped.push({
+        path,
+        name: file.name,
+        size: file.size || 0,
+        reason: ignore.reason,
+        category: ignore.category,
+      });
+      continue;
+    }
 
     added.push({
       file,
@@ -45,11 +82,21 @@ export async function readFiles(fileList, options = {}) {
       size: file.size || 0,
     });
 
+    if (onProgress) {
+      fileCount++;
+      const now = Date.now();
+      if (now - lastProgressTime >= PROGRESS_THROTTLE_MS) {
+        onProgress(fileCount);
+        lastProgressTime = now;
+      }
+    }
+
     if (i % 100 === 0) {
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
   }
 
+  added.skipped = skipped;
   return added;
 }
 
@@ -57,16 +104,38 @@ export async function processDirectoryEntry(
   entry,
   path = "",
   ignored = DEFAULT_IGNORED,
+  options = {},
 ) {
   if (!entry) return [];
 
+  const skipped = options.skipped || [];
   const currentPath = path ? `${path}/${entry.name}` : entry.name;
-  if (shouldIgnore(currentPath, ignored)) return [];
+  const ignore = getIgnoreReason(currentPath, ignored);
+  if (ignore.ignored) {
+    skipped.push({
+      path: currentPath,
+      name: entry.name,
+      size: 0,
+      reason: ignore.reason,
+      category: ignore.category,
+    });
+    return [];
+  }
 
   if (entry.isFile) {
     return new Promise((resolve) => {
       entry.file(
         (file) => {
+          if (options.onProgress) {
+            options.fileCount = (options.fileCount || 0) + 1;
+            options.lastProgressTime = options.lastProgressTime || Date.now();
+            const now = Date.now();
+            const PROGRESS_THROTTLE_MS = 500;
+            if (now - options.lastProgressTime >= PROGRESS_THROTTLE_MS) {
+              options.onProgress(options.fileCount);
+              options.lastProgressTime = now;
+            }
+          }
           resolve([
             {
               file,
@@ -94,6 +163,7 @@ export async function processDirectoryEntry(
                 e,
                 currentPath,
                 ignored,
+                options,
               );
               allFiles = allFiles.concat(files);
             }

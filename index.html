@@ -16,7 +16,13 @@
       name="robots"
       content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
     />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#0a0a0b" />
+
+    <!-- Content Security Policy -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self';"
+    />
 
     <!-- Open Graph / Social Media -->
     <meta property="og:type" content="website" />
@@ -51,7 +57,6 @@
     <link rel="canonical" href="https://devcodesnap.vercel.app" />
 
     <!-- Performance -->
-    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preload" href="css/styles.css" as="style" />
@@ -68,10 +73,6 @@
 
     <title>Code Snapshot • Export Your Codebase</title>
     <link rel="stylesheet" href="css/styles.css" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap"
-      rel="stylesheet"
-    />
 
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
@@ -125,6 +126,14 @@
         </div>
         <div class="header-actions">
           <input type="file" id="fileInput" class="hidden-input" multiple />
+          <input
+            type="file"
+            id="folderInput"
+            class="hidden-input"
+            webkitdirectory
+            directory
+            multiple
+          />
           <button class="btn" onclick="app.selectFiles()">
             <svg
               viewBox="0 0 24 24"
@@ -141,7 +150,24 @@
               <line x1="12" y1="18" x2="12" y2="12"></line>
               <line x1="9" y1="15" x2="15" y2="15"></line>
             </svg>
-            Select Files
+            <span>Select Files</span>
+          </button>
+          <button class="btn" id="selectFolderBtn" onclick="app.selectFolder()">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+              ></path>
+              <line x1="12" y1="11" x2="12" y2="17"></line>
+              <line x1="9" y1="14" x2="15" y2="14"></line>
+            </svg>
+            <span>Select Folder</span>
           </button>
           <button class="btn btn-danger" id="clearBtn" disabled>
             <svg
@@ -157,7 +183,7 @@
                 d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
               ></path>
             </svg>
-            Clear
+            <span>Clear</span>
           </button>
           <button
             class="btn btn-primary"
@@ -180,7 +206,7 @@
               <line x1="16" y1="13" x2="8" y2="13"></line>
               <line x1="16" y1="17" x2="8" y2="17"></line>
             </svg>
-            Combined Code
+            <span>Combined Code</span>
           </button>
           <button
             class="btn btn-primary"
@@ -200,7 +226,27 @@
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
-            Export ZIP
+            <span>Export ZIP</span>
+          </button>
+          <button
+            class="btn btn-ai"
+            id="downloadAiBtn"
+            disabled
+            onclick="app.startExport('ai')"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M12 3l1.9 5.8L20 10.7l-5 3.6 1.9 5.7-4.9-3.6L7.1 20l1.9-5.7-5-3.6 6.1-1.9L12 3z"
+              ></path>
+            </svg>
+            <span>AI Snapshot</span>
           </button>
         </div>
       </header>
@@ -305,6 +351,133 @@
               </div>
             </div>
           </div>
+          <div class="handoff-panel" id="handoffPanel">
+            <div class="handoff-controls">
+              <div class="control-field search-field">
+                <label for="fileSearch">Search</label>
+                <div class="search-box">
+                  <input
+                    type="search"
+                    id="fileSearch"
+                    autocomplete="off"
+                    placeholder="Filter files by path"
+                  />
+                  <button
+                    class="btn-icon"
+                    id="clearSearchBtn"
+                    title="Clear Search"
+                    aria-label="Clear search"
+                    type="button"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="control-field sort-field">
+                <label for="sortSelect">Sort</label>
+                <select id="sortSelect">
+                  <option value="path-asc">Path A-Z</option>
+                  <option value="path-desc">Path Z-A</option>
+                  <option value="size-desc">Largest first</option>
+                  <option value="size-asc">Smallest first</option>
+                  <option value="type-asc">Type</option>
+                </select>
+              </div>
+            </div>
+            <div class="chip-row" id="categoryChips" aria-label="File filters">
+              <button
+                class="filter-chip active"
+                data-category="all"
+                type="button"
+              >
+                All <span>0</span>
+              </button>
+              <button class="filter-chip" data-category="code" type="button">
+                Code <span>0</span>
+              </button>
+              <button class="filter-chip" data-category="docs" type="button">
+                Docs <span>0</span>
+              </button>
+              <button class="filter-chip" data-category="config" type="button">
+                Config <span>0</span>
+              </button>
+              <button class="filter-chip" data-category="assets" type="button">
+                Assets <span>0</span>
+              </button>
+              <button
+                class="filter-chip"
+                data-category="warnings"
+                type="button"
+              >
+                Warnings <span>0</span>
+              </button>
+              <button
+                class="filter-chip"
+                data-category="excluded"
+                type="button"
+              >
+                Excluded <span>0</span>
+              </button>
+            </div>
+            <div class="readiness-panel" id="readinessPanel">
+              <div class="readiness-heading">
+                <span>Export Readiness</span>
+                <span id="readinessSummary">0 included</span>
+              </div>
+              <div class="warning-list" id="warningList"></div>
+              <div class="bulk-actions">
+                <button
+                  class="btn btn-compact"
+                  id="includeAllBtn"
+                  type="button"
+                >
+                  Include All
+                </button>
+                <button
+                  class="btn btn-compact"
+                  id="excludeWarningsBtn"
+                  type="button"
+                  disabled
+                >
+                  Exclude Warnings
+                </button>
+                <button
+                  class="btn btn-compact"
+                  id="excludeFilteredBtn"
+                  type="button"
+                  disabled
+                >
+                  Exclude Filtered
+                </button>
+                <button
+                  class="btn btn-compact"
+                  id="removeSelectedBtn"
+                  type="button"
+                  disabled
+                >
+                  Remove Selected
+                </button>
+                <button
+                  class="btn btn-compact btn-danger"
+                  id="removeFilteredBtn"
+                  type="button"
+                  disabled
+                >
+                  Remove Filtered
+                </button>
+              </div>
+            </div>
+          </div>
           <div class="file-list-container" id="fileListContainer">
             <div class="file-list-header">
               <div class="file-list-title">
@@ -325,7 +498,12 @@
                 </svg>
                 Selected Files
               </div>
-              <span class="file-list-count" id="fileListCount">0 items</span>
+              <div class="file-list-meta">
+                <span class="selected-count" id="selectedCount"
+                  >0 selected</span
+                >
+                <span class="file-list-count" id="fileListCount">0 items</span>
+              </div>
             </div>
             <div class="file-list" id="fileList"></div>
           </div>
@@ -348,9 +526,8 @@
         </section>
       </main>
       <footer class="footer-hint">
-        <kbd>Click Select Files</kbd> to browse • <kbd>Drag folders</kbd> for
-        recursive import • <kbd>Delete</kbd>
-        to remove selected
+        <kbd>Ctrl+O</kbd> files • <kbd>Ctrl+Shift+O</kbd> folder •
+        <kbd>Ctrl+Shift+A</kbd> AI snapshot • <kbd>Delete</kbd> remove selected
       </footer>
     </div>
     <div
@@ -360,7 +537,6 @@
       aria-atomic="false"
     ></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
     <script type="module" src="js/main.js"></script>
   </body>
 </html>

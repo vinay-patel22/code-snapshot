@@ -133,47 +133,90 @@ export const SECURITY_FILE_EXTENSIONS = new Set([
   "~",
 ]);
 
-export function shouldIgnore(
+export function getIgnoreReason(
   path,
   ignoredSet = DEFAULT_IGNORED,
   ignoredExtensions = null,
 ) {
-  if (!path) return false;
+  if (!path) return { ignored: false, reason: "", category: "" };
 
   const lowerPath = path.replace(/\\/g, "/").toLowerCase();
+  const normalizedIgnored = new Set(
+    Array.from(ignoredSet || []).map((item) => String(item).toLowerCase()),
+  );
 
   const pathComponents = lowerPath.split(/[\/\\]+/).filter(Boolean);
 
-  if (pathComponents.some((component) => ignoredSet.has(component))) {
-    return true;
+  const ignoredComponent = pathComponents.find((component) =>
+    normalizedIgnored.has(component),
+  );
+
+  if (ignoredComponent) {
+    return {
+      ignored: true,
+      reason: `${ignoredComponent} is ignored by default`,
+      category: "default",
+    };
   }
 
   const extensionsToCheck = [];
   if (ignoredExtensions) {
-    extensionsToCheck.push(ignoredExtensions);
+    extensionsToCheck.push({
+      set: ignoredExtensions,
+      reason: "Extension is excluded by the active filter",
+      category: "custom",
+    });
   }
-  extensionsToCheck.push(ASSET_FILE_EXTENSIONS);
-  extensionsToCheck.push(STYLE_FILE_EXTENSIONS);
-  extensionsToCheck.push(SECURITY_FILE_EXTENSIONS);
+  extensionsToCheck.push({
+    set: ASSET_FILE_EXTENSIONS,
+    reason: "Asset or binary extension is ignored by default",
+    category: "asset",
+  });
+  extensionsToCheck.push({
+    set: STYLE_FILE_EXTENSIONS,
+    reason: "Style extension is ignored by default",
+    category: "style",
+  });
+  extensionsToCheck.push({
+    set: SECURITY_FILE_EXTENSIONS,
+    reason: "Security-sensitive extension is ignored by default",
+    category: "security",
+  });
 
   if (pathComponents.length > 0) {
     const filename = pathComponents[pathComponents.length - 1];
 
     if (filename.startsWith(".env")) {
-      return true;
+      return {
+        ignored: true,
+        reason: "Environment file is ignored by default",
+        category: "security",
+      };
     }
 
     const dotIndex = filename.lastIndexOf(".");
     if (dotIndex > 0) {
       const extension = filename.substring(dotIndex);
 
-      for (const extSet of extensionsToCheck) {
-        if (extSet.has(extension)) {
-          return true;
+      for (const extRule of extensionsToCheck) {
+        if (extRule.set.has(extension)) {
+          return {
+            ignored: true,
+            reason: extRule.reason,
+            category: extRule.category,
+          };
         }
       }
     }
   }
 
-  return false;
+  return { ignored: false, reason: "", category: "" };
+}
+
+export function shouldIgnore(
+  path,
+  ignoredSet = DEFAULT_IGNORED,
+  ignoredExtensions = null,
+) {
+  return getIgnoreReason(path, ignoredSet, ignoredExtensions).ignored;
 }

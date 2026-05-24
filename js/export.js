@@ -1,57 +1,93 @@
-// Export functions (fflate + Worker)
+// Export functions (Worker-backed, local-only)
+import { EXPORT_CONSTANTS, UI_CONSTANTS } from "./constants.js";
 
-export async function startExportWorker(type, files, onProgress, signal) {
+export async function startExportWorker(
+  type,
+  files,
+  onProgress,
+  signal,
+  options = {},
+) {
   return new Promise(function (resolve, reject) {
     const worker = new Worker("./js/export-worker.js");
     const filesArray = Array.from(files);
 
-    const CHUNK_SIZE = 50;
+    if (!filesArray.length) {
+      reject(new Error("No files to export"));
+      return;
+    }
+
+    const CHUNK_SIZE =
+      type === "zip"
+        ? EXPORT_CONSTANTS.ZIP_CHUNK_SIZE
+        : EXPORT_CONSTANTS.TXT_CHUNK_SIZE;
     const totalChunks = Math.ceil(filesArray.length / CHUNK_SIZE);
-    let currentChunk = 0;
+    let nextChunkIndex = 0;
+    let completedChunks = 0;
     let cancelled = false;
 
     const txtBlobs = [];
-    const zipChunks = [];
+    const aiBlobs = [];
 
     worker.onmessage = async function (e) {
       const msg = e.data;
       const msgType = msg.type;
-      const data = msg.data;
-      const chunkIndex = msg.chunkIndex;
-      const totalChunksWorker = msg.totalChunks;
-      const isTxt = msg.isTxt;
-      const percent = msg.percent;
-      const text = msg.text;
 
       if (msgType === "progress") {
-        onProgress(percent, text);
-      } else if (msgType === "txtChunk") {
-        const blob = new Blob([data], { type: "text/plain" });
-        txtBlobs.push(blob);
-        currentChunk++;
+        onProgress?.(msg.percent, msg.text);
+        return;
+      }
 
-        if (currentChunk >= totalChunksWorker) {
-          const finalBlob = new Blob(txtBlobs, { type: "text/plain" });
+      if (msgType === "txtChunk" || msgType === "aiChunk") {
+        const blob = new Blob([msg.data], {
+          type: msgType === "aiChunk" ? "text/markdown" : "text/plain",
+        });
+        if (msgType === "aiChunk") {
+          aiBlobs.push(blob);
+        } else {
+          txtBlobs.push(blob);
+        }
+        completedChunks++;
+
+        if (completedChunks >= msg.totalChunks) {
+          const finalBlob = new Blob(
+            msgType === "aiChunk" ? aiBlobs : txtBlobs,
+            {
+              type: msgType === "aiChunk" ? "text/markdown" : "text/plain",
+            },
+          );
           worker.terminate();
+          onProgress?.(100, "Export ready");
           resolve(finalBlob);
         } else {
           await sendNextChunk();
         }
-      } else if (msgType === "zipChunk") {
-        zipChunks.push(new Uint8Array(data));
-        currentChunk++;
+        return;
+      }
 
-        if (currentChunk >= totalChunksWorker) {
-          const finalBlob = new Blob(zipChunks, { type: "application/zip" });
-          worker.terminate();
-          resolve(finalBlob);
-        } else {
-          await sendNextChunk();
-        }
-      } else if (msgType === "error") {
+      if (msgType === "chunkComplete") {
+        completedChunks++;
+        await sendNextChunk();
+        return;
+      }
+
+      if (msgType === "zipChunk") {
+        const finalBlob = new Blob([new Uint8Array(msg.data)], {
+          type: "application/zip",
+        });
         worker.terminate();
-        reject(new Error(data));
-      } else if (msgType === "cancelled") {
+        onProgress?.(100, "Export ready");
+        resolve(finalBlob);
+        return;
+      }
+
+      if (msgType === "error") {
+        worker.terminate();
+        reject(new Error(msg.data));
+        return;
+      }
+
+      if (msgType === "cancelled") {
         worker.terminate();
         reject(new Error("Export cancelled"));
       }
@@ -71,14 +107,33 @@ export async function startExportWorker(type, files, onProgress, signal) {
       });
     }
 
-    worker.postMessage({ type: type, action: "start" });
+    worker.postMessage({
+      type,
+      action: "start",
+      options,
+      fileIndex: filesArray.map((fileInfo) => ({
+        path: fileInfo.path,
+        name: fileInfo.name,
+        size: fileInfo.size,
+        category: fileInfo.category || "",
+        warnings: fileInfo.warnings || [],
+      })),
+      totalChunks,
+    });
 
     async function sendNextChunk() {
-      if (currentChunk >= totalChunks || cancelled) return;
+      if (nextChunkIndex >= totalChunks || cancelled) return;
 
-      const start = currentChunk * CHUNK_SIZE;
+      const start = nextChunkIndex * CHUNK_SIZE;
       const end = Math.min(start + CHUNK_SIZE, filesArray.length);
       const chunkFiles = filesArray.slice(start, end);
+      const chunkIndex = nextChunkIndex + 1;
+      nextChunkIndex++;
+
+      onProgress?.(
+        Math.round(((chunkIndex - 1) / totalChunks) * 20),
+        `Reading files... ${chunkIndex}/${totalChunks}`,
+      );
 
       const filesWithData = await Promise.all(
         chunkFiles.map(async function (f) {
@@ -86,18 +141,25 @@ export async function startExportWorker(type, files, onProgress, signal) {
             path: f.path,
             name: f.name,
             size: f.size,
+            category: f.category || "",
+            warnings: f.warnings || [],
             data: new Uint8Array(await f.file.arrayBuffer()),
           };
         }),
       );
 
-      worker.postMessage({
-        type: type,
-        action: "processChunk",
-        files: filesWithData,
-        chunkIndex: currentChunk + 1,
-        totalChunks: totalChunks,
-      });
+      if (cancelled) return;
+
+      worker.postMessage(
+        {
+          type,
+          action: "processChunk",
+          files: filesWithData,
+          chunkIndex,
+          totalChunks,
+        },
+        filesWithData.map((f) => f.data.buffer),
+      );
     }
 
     sendNextChunk().catch(reject);
@@ -105,8 +167,10 @@ export async function startExportWorker(type, files, onProgress, signal) {
 }
 
 export function downloadBlob(blob, filename, mime) {
-  mime = mime || "application/octet-stream";
-  const url = URL.createObjectURL(blob);
+  mime = mime || blob.type || "application/octet-stream";
+  const typedBlob =
+    blob.type === mime ? blob : new Blob([blob], { type: mime });
+  const url = URL.createObjectURL(typedBlob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
@@ -115,5 +179,5 @@ export function downloadBlob(blob, filename, mime) {
   a.remove();
   setTimeout(function () {
     URL.revokeObjectURL(url);
-  }, 100);
+  }, UI_CONSTANTS.URL_REVOKE_DELAY_MS);
 }

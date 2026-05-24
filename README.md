@@ -25,7 +25,7 @@
 - **Handles 10,000+ files** efficiently with chunked processing
 - **Memory-safe**: Streams data to avoid browser memory limits (tested with 1.5GB+ projects)
 - **Real-time progress**: Live progress bars with cancel capability
-- **Fast compression**: Uses fflate (3-5x faster than JSZip)
+- **Local ZIP generation**: Uses browser-native compression when available with an offline-safe ZIP fallback
 
 ### User Experience
 
