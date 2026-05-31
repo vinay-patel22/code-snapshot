@@ -9,19 +9,13 @@ import {
 } from "./file-ops.js";
 import { showToast, formatBytes } from "./ui.js";
 import { UI_CONSTANTS, EXPORT_CONSTANTS } from "./constants.js";
+import { getExtension } from "./utils.js";
 
 const SECRET_PATH_RE =
   /(^|\/)(\.env|id_rsa|id_dsa|credentials|secrets?|private[-_]?key|service[-_]?account|keystore|token)(\.|\/|$)/i;
 const SECRET_VALUE_RE =
   /(api[_-]?key|secret|password|passwd|token|private[_-]?key|client[_-]?secret)\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{12,}/i;
 const PRIVATE_KEY_RE = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
-
-function getExtension(path) {
-  const cleanPath = path.split("?")[0].toLowerCase();
-  const filename = cleanPath.split("/").pop() || "";
-  const dotIndex = filename.lastIndexOf(".");
-  return dotIndex > 0 ? filename.substring(dotIndex) : "";
-}
 
 export class FileManager {
   constructor(state, caches, els, uiCallbacks, filterManager) {

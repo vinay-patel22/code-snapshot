@@ -17,18 +17,20 @@ export function debounce(func, wait) {
   };
 }
 
+const htmlEscapeMap = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+
 export function escapeHtml(value) {
-  const div = document.createElement("div");
-  div.textContent = String(value ?? "");
-  return div.innerHTML;
+  return String(value ?? "").replace(/[&<>"']/g, (char) => htmlEscapeMap[char]);
 }
 
 export function escapeAttr(value) {
   return escapeHtml(value).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
-export function escapeForAttr(value) {
-  return escapeAttr(value);
 }
 
 export function getExtension(path) {
@@ -50,7 +52,7 @@ export function memoize(fn, keyGenerator = (...args) => JSON.stringify(args)) {
   };
 }
 
-export function createMemoizedCache() {
+export function createMemoizedCache(maxSize = 1000) {
   const cache = new Map();
   return {
     get(key) {
@@ -58,6 +60,10 @@ export function createMemoizedCache() {
     },
     set(key, value) {
       cache.set(key, value);
+      if (cache.size > maxSize) {
+        const firstKey = cache.keys().next().value;
+        cache.delete(firstKey);
+      }
     },
     has(key) {
       return cache.has(key);

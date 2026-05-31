@@ -8,7 +8,6 @@ import {
 
 export { formatBytes, escapeHtml, debounce };
 export const escapeAttr = escapeAttrUtil;
-export const escapeForAttr = escapeAttrUtil;
 
 function encodePath(path) {
   return encodeURIComponent(path);

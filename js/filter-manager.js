@@ -1,6 +1,7 @@
 // File filtering and sorting logic
 
 import { ASSET_FILE_EXTENSIONS } from "./file-ops.js";
+import { getExtension } from "./utils.js";
 
 const CODE_EXTENSIONS = new Set([
   ".js",
@@ -48,13 +49,6 @@ const CONFIG_EXTENSIONS = new Set([
   ".conf",
   ".xml",
 ]);
-
-function getExtension(path) {
-  const cleanPath = path.split("?")[0].toLowerCase();
-  const filename = cleanPath.split("/").pop() || "";
-  const dotIndex = filename.lastIndexOf(".");
-  return dotIndex > 0 ? filename.substring(dotIndex) : "";
-}
 
 export class FilterManager {
   constructor(state, caches) {
