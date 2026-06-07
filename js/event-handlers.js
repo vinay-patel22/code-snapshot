@@ -95,6 +95,9 @@ export class EventHandlers {
     this.els.downloadAiBtn?.addEventListener("click", () =>
       this.managers.exportManager.startExport("ai"),
     );
+    this.els.exportStructureBtn?.addEventListener("click", () =>
+      this.managers.exportManager.exportStructure(),
+    );
 
     // Cancel button
     this.els.cancelBtn?.addEventListener("click", () =>

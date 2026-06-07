@@ -103,6 +103,49 @@ export class ExportManager {
     }
   }
 
+  async exportStructure() {
+    try {
+      if (this.state.isExporting) return;
+
+      const files = this.filterManager.getAllFiles();
+      if (!files.length) {
+        showToast(
+          this.els.toastContainer,
+          "No project structure to export",
+          "warning",
+        );
+        return;
+      }
+
+      const { buildStructureText, downloadBlob } = await import("./export.js");
+      const totalSize = files.reduce((sum, fileInfo) => {
+        return sum + (fileInfo.size || 0);
+      }, 0);
+      const text = buildStructureText(files, {
+        generatedAt: new Date().toISOString(),
+        totalSize,
+      });
+
+      downloadBlob(
+        new Blob([text], { type: "text/plain" }),
+        "code-snapshot-structure.txt",
+        "text/plain",
+      );
+      showToast(
+        this.els.toastContainer,
+        "Project structure export completed",
+        "success",
+      );
+    } catch (err) {
+      console.error(err);
+      showToast(
+        this.els.toastContainer,
+        `Structure export failed: ${err.message}`,
+        "error",
+      );
+    }
+  }
+
   cancelExport() {
     this.state.exportCancelled = true;
     if (this.state.abortController) {
@@ -125,5 +168,10 @@ export class ExportManager {
       if (!button) return;
       button.disabled = shouldDisable;
     });
+
+    if (this.els.exportStructureBtn) {
+      this.els.exportStructureBtn.disabled =
+        disabled || this.state.files.size === 0;
+    }
   }
 }

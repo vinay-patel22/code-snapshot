@@ -58,6 +58,7 @@ export class CodeSnapshotApp {
       toastContainer: document.getElementById("toastContainer"),
       sidebar: document.getElementById("sidebar"),
       resizeHandle: document.getElementById("resizeHandle"),
+      exportStructureBtn: document.getElementById("exportStructureBtn"),
       collapseAllBtn: document.getElementById("collapseAllBtn"),
       expandAllBtn: document.getElementById("expandAllBtn"),
     };
@@ -284,6 +285,10 @@ export class CodeSnapshotApp {
 
   startExport(type) {
     this.exportManager.startExport(type);
+  }
+
+  exportStructure() {
+    this.exportManager.exportStructure();
   }
 
   collapseAll() {

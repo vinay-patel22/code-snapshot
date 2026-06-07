@@ -477,11 +477,17 @@ body {
   transition: var(--transition);
 }
 
-.btn-icon:hover {
+.btn-icon:hover:not(:disabled) {
   background: rgba(99, 102, 241, 0.08);
   border-color: var(--border-hover);
   color: var(--text-primary);
   transform: translateY(-1px);
+}
+
+.btn-icon:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-icon.active {
