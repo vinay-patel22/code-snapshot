@@ -103,6 +103,95 @@ export class ExportManager {
     }
   }
 
+  async copyToClipboard(type) {
+  try {
+    if (this.state.isExporting) return;
+
+    const exportFiles = this.filterManager.getExportEntries();
+    if (!exportFiles.length) {
+      showToast(
+        this.els.toastContainer,
+        "No included files to export",
+        "warning",
+      );
+      return;
+    }
+
+    this.state.isExporting = true;
+    this.state.exportCancelled = false;
+    this.state.abortController = new AbortController();
+    const abortSignal = this.state.abortController.signal;
+    this.setExportButtonsState(true);
+    this.uiCallbacks.showLoading(
+      true,
+      `Preparing ${exportFiles.length} files for clipboard...`,
+    );
+
+    const { startExportWorker } = await import("./export.js");
+    const blob = await startExportWorker(
+      type,
+      exportFiles,
+      (percent, text) => this.uiCallbacks.updateProgress(percent, text),
+      abortSignal,
+      this.filterManager.getExportOptions(type, exportFiles),
+    );
+
+    const text = await blob.text();
+    await navigator.clipboard.writeText(text);
+
+    if (!this.state.exportCancelled) {
+      showToast(
+        this.els.toastContainer,
+        `${this.filterManager.getExportLabel(type)} copied to clipboard`,
+        "success",
+      );
+    }
+  } catch (err) {
+    console.error(err);
+    if (err.message === "Export cancelled") {
+      showToast(this.els.toastContainer, "Copy cancelled", "warning");
+    } else if (err.name === "NotAllowedError") {
+      showToast(
+        this.els.toastContainer,
+        "Clipboard permission denied — try downloading instead",
+        "error",
+      );
+    } else {
+      showToast(
+        this.els.toastContainer,
+        `Copy failed: ${err.message}`,
+        "error",
+      );
+    }
+  } finally {
+    this.state.isExporting = false;
+    this.state.abortController = null;
+    setTimeout(() => {
+      this.setExportButtonsState(false);
+      if (!this.state.exportCancelled) this.uiCallbacks.showLoading(false);
+    }, 500);
+  }
+}
+
+setExportButtonsState(disabled) {
+  const hasExportFiles = this.filterManager.getExportFiles().length > 0;
+  const shouldDisable = disabled || !hasExportFiles;
+  [
+    this.els.downloadTxtBtn,
+    this.els.downloadZipBtn,
+    this.els.downloadAiBtn,
+    this.els.copyAiBtn, // add this line
+  ].forEach((button) => {
+    if (!button) return;
+    button.disabled = shouldDisable;
+  });
+
+  if (this.els.exportStructureBtn) {
+    this.els.exportStructureBtn.disabled =
+      disabled || this.state.files.size === 0;
+  }
+}
+
   async exportStructure() {
     try {
       if (this.state.isExporting) return;
@@ -155,23 +244,5 @@ export class ExportManager {
     this.setExportButtonsState(false);
     this.uiCallbacks.showLoading(false);
     showToast(this.els.toastContainer, "Export cancelled", "warning");
-  }
-
-  setExportButtonsState(disabled) {
-    const hasExportFiles = this.filterManager.getExportFiles().length > 0;
-    const shouldDisable = disabled || !hasExportFiles;
-    [
-      this.els.downloadTxtBtn,
-      this.els.downloadZipBtn,
-      this.els.downloadAiBtn,
-    ].forEach((button) => {
-      if (!button) return;
-      button.disabled = shouldDisable;
-    });
-
-    if (this.els.exportStructureBtn) {
-      this.els.exportStructureBtn.disabled =
-        disabled || this.state.files.size === 0;
-    }
   }
 }
