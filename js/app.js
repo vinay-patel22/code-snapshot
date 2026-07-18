@@ -51,6 +51,7 @@ export class CodeSnapshotApp {
       downloadTxtBtn: document.getElementById("downloadTxtBtn"),
       downloadZipBtn: document.getElementById("downloadZipBtn"),
       downloadAiBtn: document.getElementById("downloadAiBtn"),
+      copyAiBtn: document.getElementById("copyAiBtn"),
       loading: document.getElementById("loadingOverlay"),
       loadingText: document.getElementById("loadingText"),
       progressBar: document.getElementById("progressBar"),

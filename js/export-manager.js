@@ -3,6 +3,7 @@
 import { CONFIG } from "./file-ops.js";
 import { showToast, formatBytes } from "./ui.js";
 import { STORAGE_KEYS, setStoredValue } from "./state-management.js";
+import { UI_CONSTANTS } from "./constants.js";
 
 export class ExportManager {
   constructor(state, els, uiCallbacks, filterManager) {
@@ -97,9 +98,9 @@ export class ExportManager {
       this.state.abortController = null;
       // Delay re-enabling buttons to allow download to start
       setTimeout(() => {
-        this.setExportButtonsState(false);
-        if (!this.state.exportCancelled) this.uiCallbacks.showLoading(false);
-      }, 1000);
+      this.setExportButtonsState(false);
+      if (!this.state.exportCancelled) this.uiCallbacks.showLoading(false);
+    }, UI_CONSTANTS.BUTTON_REENABLE_DELAY_MS);
     }
   }
 
@@ -137,6 +138,9 @@ export class ExportManager {
     );
 
     const text = await blob.text();
+    if (!text) {
+      throw new Error("Failed to export content");
+    }
     await navigator.clipboard.writeText(text);
 
     if (!this.state.exportCancelled) {
@@ -164,14 +168,14 @@ export class ExportManager {
       );
     }
   } finally {
-    this.state.isExporting = false;
-    this.state.abortController = null;
-    setTimeout(() => {
-      this.setExportButtonsState(false);
-      if (!this.state.exportCancelled) this.uiCallbacks.showLoading(false);
-    }, 500);
+      this.state.isExporting = false;
+      this.state.abortController = null;
+      setTimeout(() => {
+        this.setExportButtonsState(false);
+        if (!this.state.exportCancelled) this.uiCallbacks.showLoading(false);
+      }, UI_CONSTANTS.BUTTON_REENABLE_DELAY_MS);
+    }
   }
-}
 
 setExportButtonsState(disabled) {
   const hasExportFiles = this.filterManager.getExportFiles().length > 0;
@@ -180,7 +184,7 @@ setExportButtonsState(disabled) {
     this.els.downloadTxtBtn,
     this.els.downloadZipBtn,
     this.els.downloadAiBtn,
-    this.els.copyAiBtn, // add this line
+    this.els.copyAiBtn,
   ].forEach((button) => {
     if (!button) return;
     button.disabled = shouldDisable;
